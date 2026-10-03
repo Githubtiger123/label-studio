@@ -325,6 +325,64 @@ class InactivitySessionTimeoutMiddleWare(CommonMiddleware):
         request.session.set_expiry(max_time_between_activity if request.session.get('keep_me_logged_in', True) else 0)
 
 
+class SSOCookieLoginMiddleware(MiddlewareMixin):
+    """从主平台跳转时携带的 username cookie 自动登录（cookie 为准）。
+
+    说明：
+    - cookie 值为明文用户名，由主平台/网关保证其仅在已认证用户下存在；
+    - 若 cookie 中的用户名与当前 session 用户不一致，则以 cookie 为准：
+      登出旧身份，登录新身份；
+    - 用户不存在时自动创建（email 映射为 <username>@<SSO_EMAIL_DOMAIN>），
+      并为每个用户创建专属组织（一人一组织），实现用户间数据隔离；
+    - 仅处理浏览器 cookie 路径：携带 Authorization / X-Api-Key 的程序调用
+      由 LS 自身的 token/JWT 认证处理，本中间件不介入，避免认证冲突。
+    """
+
+    def process_request(self, request):
+        # 开关未开启：不做任何处理
+        if not getattr(settings, 'SSO_COOKIE_LOGIN_ENABLED', False):
+            return
+
+        # 程序调用通道（API Token / JWT）由 LS 自身认证处理，本中间件不介入
+        if request.META.get('HTTP_AUTHORIZATION') or request.META.get('HTTP_X_API_KEY'):
+            return
+
+        # 读取并规整用户名，跳过空值与平台异常兜底值
+        username = (request.COOKIES.get(settings.SSO_COOKIE_NAME) or '').strip()
+        if not username or username == settings.SSO_COOKIE_SKIP_VALUE:
+            return
+
+        # 域名统一小写，与 UserManager.normalize_email 行为对齐，保证身份比对一致
+        email = f'{username}@{settings.SSO_EMAIL_DOMAIN.lower()}'
+
+        # 已登录且身份一致：直接放行（高频路径，零开销，仅一次字符串比较）
+        if hasattr(request, 'user') and request.user.is_authenticated:
+            if request.user.email == email:
+                return
+            # 身份不一致：cookie 为准，登出旧身份
+            logout(request)
+
+        # 惰性导入，避免循环依赖
+        from organizations.models import Organization
+        from users.functions import login
+        from users.models import User
+
+        user = User.objects.filter(email=email).first()
+        if user is None:
+            # 首次跳转：自动建号。password=None 表示该账号无法用密码登录
+            user = User.objects.create_user(email=email, password=None, username=username)
+            # 一人一组织：为每个用户创建专属组织，实现用户间数据隔离。
+            org = Organization.create_organization(created_by=user, title=username)
+            user.active_organization = org
+            user.save(update_fields=['active_organization'])
+
+        # 停用账号（软删除后 is_active=False）不建立会话。
+        if not user.is_active:
+            return
+
+        login(request, user, backend='django.contrib.auth.backends.ModelBackend')
+
+
 class HumanSignalCspMiddleware(CSPMiddleware):
     """
     Extend CSPMiddleware to support switching report-only CSP to regular CSP.

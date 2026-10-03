@@ -4,6 +4,7 @@ Utility helpers for LocalFiles storage operations.
 
 import os
 import posixpath
+import re
 from pathlib import Path
 from typing import Callable, Iterable, Optional
 
@@ -12,6 +13,9 @@ from django.core.exceptions import SuspiciousFileOperation
 from django.utils._os import safe_join
 
 AUTO_ROOT_CANDIDATES: tuple[str, ...] = ('mydata', 'label-studio-data')
+
+# 主平台用户名规则：小写字母开头，仅小写字母/数字/-
+USERNAME_RE = re.compile(r'^[a-z][a-z0-9-]*$')
 
 
 def autodetect_local_files_root(
@@ -86,3 +90,15 @@ def project_local_files_resolver(project) -> Callable[[str], Optional[str]]:
         return None
 
     return resolve
+
+
+def resolve_user_scoped_root(user) -> Optional[Path]:
+    """返回用户可访问的本地文件根目录 ``/mnt/<username>/``。
+
+    用户名必须满足主平台规则（小写字母开头，仅小写字母/数字/-），
+    否则返回 ``None``，由调用方决定是拒绝（配置侧）还是跳过校验（读取侧）。
+    """
+    username = getattr(user, 'username', '') or ''
+    if not USERNAME_RE.fullmatch(username):
+        return None
+    return (Path(settings.LOCAL_FILES_DOCUMENT_ROOT) / username).resolve()

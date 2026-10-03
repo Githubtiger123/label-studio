@@ -12,7 +12,7 @@ from django.conf import settings
 from django.db.models import CharField, F, Value
 from django.http import HttpRequest, HttpResponse, HttpResponseForbidden, HttpResponseNotFound, HttpResponseNotModified
 from drf_spectacular.utils import extend_schema
-from io_storages.localfiles.functions import build_local_files_path, is_within_storage
+from io_storages.localfiles.functions import build_local_files_path, is_within_storage, resolve_user_scoped_root
 from io_storages.localfiles.models import LocalFilesImportStorage
 from ranged_fileresponse import RangedFileResponse
 from rest_framework.decorators import api_view, permission_classes
@@ -92,6 +92,13 @@ def localfiles_data(request):
 
     if path and request.user.is_authenticated:
         full_path = Path(build_local_files_path(path))
+        # 纵深防御：主平台用户只允许访问自己目录 /mnt/<username>/ 下的文件，
+        # 防止通过 ?d= 跨用户读取（在 project 权限隔离之上再加一层 username 前缀校验）。
+        user_root = resolve_user_scoped_root(request.user)
+        if user_root is not None:
+            resolved_full = full_path.resolve()
+            if not (resolved_full == user_root or user_root in resolved_full.parents):
+                return HttpResponseNotFound()
         user_has_permissions = False
 
         # Storage paths are normalized on save/migration, so prefix matches using the

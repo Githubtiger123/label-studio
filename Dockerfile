@@ -55,6 +55,7 @@ ENV PYTHONUNBUFFERED=1 \
     UV_LINK_MODE="copy" \
     UV_COMPILE_BYTECODE=1 \
     UV_PYTHON_DOWNLOADS=never \
+    UV_DEFAULT_INDEX="https://pypi.tuna.tsinghua.edu.cn/simple" \
     PATH="/label-studio/.venv/bin:$PATH"
 
 RUN apk add --no-cache \
