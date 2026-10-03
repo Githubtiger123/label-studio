@@ -118,12 +118,14 @@ ENV LS_DIR=/label-studio \
 WORKDIR $LS_DIR
 
 # install prerequisites for app
-RUN apk upgrade --no-cache && apk add --no-cache \
-    expat \
-    glib \
-    nginx \
-    bash \
-    procps
+RUN sed -i 's#https://dl-cdn.alpinelinux.org/alpine#https://mirrors.tuna.tsinghua.edu.cn/alpine#g' /etc/apk/repositories \
+    && apk upgrade --no-cache \
+    && apk add --no-cache \
+        expat \
+        glib \
+        nginx \
+        bash \
+        procps
 
 RUN set -eux; \
     mkdir -p $LS_DIR $LABEL_STUDIO_BASE_DATA_DIR $OPT_DIR && \
