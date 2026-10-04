@@ -80,6 +80,11 @@ WORKDIR /label-studio
 # builds across source edits. label-studio-sdk comes from its git pin.
 COPY pyproject.toml uv.lock README.md ./
 
+
+# 加速 GitHub 访问：label-studio-sdk 是 git 依赖，直连 github.com 常超时失败
+RUN git config --global url."https://ghfast.top/https://github.com/".insteadOf "https://github.com/"
+
+
 ARG INCLUDE_DEV=false
 
 RUN --mount=type=cache,target=/.uv-cache,id=uv-cache-alpine,sharing=locked \
