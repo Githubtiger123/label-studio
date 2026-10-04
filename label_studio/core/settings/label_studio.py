@@ -24,13 +24,6 @@ SSO_COOKIE_SKIP_VALUE = get_env('SSO_COOKIE_SKIP_VALUE', 'myapp')
 if SSO_COOKIE_LOGIN_ENABLED:
     MIDDLEWARE.append('core.middleware.SSOCookieLoginMiddleware')
 
-# 子路径部署：base.py 中 STATIC_URL='/static/' 写死、不跟随 FORCE_SCRIPT_NAME，
-# 必须显式覆盖为带前缀的路径，否则静态资源落到根路径、与主平台 /static/ 冲突导致白屏。
-# 注意：FORCE_SCRIPT_NAME 仅在 base.py 解析 HOST 成功后才存在（未配置 HOST 时无此变量），
-# 这里用 globals() 安全读取，避免未配置 HOST 时 NameError；MEDIA_URL 保持默认 '/data/' 不要改。
-if globals().get('FORCE_SCRIPT_NAME'):
-    STATIC_URL = globals()['FORCE_SCRIPT_NAME'] + '/static/'
-
 ADD_DEFAULT_ML_BACKENDS = False
 
 LOGGING['root']['level'] = get_env('LOG_LEVEL', 'WARNING')

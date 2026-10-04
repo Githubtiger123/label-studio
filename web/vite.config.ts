@@ -55,11 +55,13 @@ const { postcssPrefixLsfClasses, postcssPreProcessGlobalBlocks } = require("./po
 export default defineConfig(({ mode }) => {
   const FRONTEND_HOSTNAME = process.env.FRONTEND_HOSTNAME || "http://localhost:8010";
   const DJANGO_HOSTNAME = process.env.DJANGO_HOSTNAME || "http://localhost:8080";
+  // 前端资源子路径前缀：子路径部署时通过 VITE_BASE 传入（如 /labelstudio/react-app/）
+  const VITE_BASE = process.env.VITE_BASE || "/react-app/";
   const outDir = path.resolve(__dirname, "dist/apps/labelstudio");
 
   return {
     root: path.resolve(__dirname, "apps/labelstudio/src"),
-    base: "/react-app/",
+    base: VITE_BASE,
     publicDir: false,
     envDir: path.resolve(__dirname, "../../../"),
     define: {

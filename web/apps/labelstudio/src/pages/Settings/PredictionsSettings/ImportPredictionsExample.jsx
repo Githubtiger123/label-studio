@@ -169,7 +169,7 @@ export const ImportPredictionsExample = () => {
       return;
     }
     let cancelled = false;
-    fetch(`/api/interfaces/${project.source_interface_id}/`, { credentials: "same-origin" })
+    fetch(`${(window.APP_SETTINGS?.hostname ?? "").replace(/\/+$/, "")}/api/interfaces/${project.source_interface_id}/`, { credentials: "same-origin" })
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
         if (!cancelled) setInterfaceSchema(data);

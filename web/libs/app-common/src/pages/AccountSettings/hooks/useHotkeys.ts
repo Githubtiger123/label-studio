@@ -114,9 +114,11 @@ export async function loadAndApplyProjectHotkeys(projectId: number | string): Pr
   const requestToken = ++projectHotkeyRequestToken;
 
   try {
-    const response = await fetch(`/api/current-user/hotkeys/?project=${encodeURIComponent(String(projectId))}`, {
-      credentials: "same-origin",
-    });
+    const hostname = (window.APP_SETTINGS?.hostname ?? "").replace(/\/+$/, "");
+    const response = await fetch(
+      `${hostname}/api/current-user/hotkeys/?project=${encodeURIComponent(String(projectId))}`,
+      { credentials: "same-origin" }
+    );
     if (!response.ok) {
       throw new Error(`Project hotkey request failed with status ${response.status}`);
     }

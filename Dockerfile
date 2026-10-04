@@ -28,6 +28,10 @@ ENV BUILD_NO_SERVER=true \
     NODE_ENV=production \
     NODE_OPTIONS="--max-old-space-size=4096"
 
+# 前端资源子路径前缀：子路径部署时通过 --build-arg VITE_BASE=/<子路径>/react-app/ 传入
+ARG VITE_BASE=/react-app/
+ENV VITE_BASE=${VITE_BASE}
+
 WORKDIR /label-studio/web
 
 RUN apk add --no-cache git
