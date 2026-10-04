@@ -7,6 +7,7 @@ from typing import Any
 import ujson as json
 from core.current_request import CurrentContext
 from core.feature_flags import flag_set
+from core.label_config import replace_task_data_undefined_with_config_field
 from data_manager.models import Filter, FilterGroup, View
 from data_manager.prepare_params import filters_schema, ordering_schema, selected_items_schema
 from django.conf import settings
@@ -720,7 +721,14 @@ class DataManagerTaskSerializer(TaskSerializer):
 
     def to_representation(self, obj):
         """Dynamically manage including of some fields in the API result"""
-        # Restrict task.data to visible DM columns before URI resolve (FIT-2416).
+        # 先替换 $undefined$ → 实际字段名（如 image），再过滤 visible_data_keys。
+        # 否则 Local Files 等以 $undefined$ 键导入的任务，image 字段会在过滤时被丢弃，
+        # 导致列表缩略图拿不到值（详情接口走 TaskSerializer 无此问题）。
+        project = self.project(obj)
+        if project is not None and isinstance(getattr(obj, 'data', None), dict):
+            replace_task_data_undefined_with_config_field(obj.data, project)
+
+        # Restrict task.data to visible DM columns (FIT-2416).
         visible_data_keys = self.context.get('dm_visible_data_keys')
         if visible_data_keys is not None and isinstance(getattr(obj, 'data', None), dict):
             obj.data = {key: value for key, value in obj.data.items() if key in visible_data_keys}
